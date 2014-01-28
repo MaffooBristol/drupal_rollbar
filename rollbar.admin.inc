@@ -1,16 +1,17 @@
 <?php
 /**
- * @file rollbar.admin.inc.
+ * @file
+ * rollbar.admin.inc.
  */
 
 
 /**
- * Admin form callback for rollbar settings
+ * Admin form callback for rollbar settings.
  */
 function rollbar_admin_settings_form($form, &$form_state) {
   $form = array();
 
-  // Common settings
+  // Common settings.
   $form['common'] = array(
     '#type' => 'fieldset',
     '#title' => t('Common'),
@@ -21,12 +22,12 @@ function rollbar_admin_settings_form($form, &$form_state) {
     '#type' => 'textfield',
     '#required' => TRUE,
     '#title' => t('Environment'),
-    '#description' => t('Specify the environment variable to be sent to the
+    '#description' => t('Specify the environment name to be sent to the
         Rollbar API.'),
     '#default_value' => variable_get('rollbar_environment', 'production'),
   );
 
-  // PHP settings
+  // PHP settings.
   $form['php'] = array(
     '#type' => 'fieldset',
     '#title' => t('PHP'),
@@ -99,7 +100,7 @@ function rollbar_admin_settings_form($form, &$form_state) {
     '#title' => t('Send watchdog PHP errors and exceptions.'),
     '#enabled' => FALSE,
     '#description' => t('Watchdog PHP errors will most likely include duplicates
-        so should probably be tunred off, unless you\'ve opted out of
+        so should probably be turned off, unless you\'ve opted out of
         registering as an Error and Exception handler above.'),
     '#states' => array(
       'disabled' => array(
@@ -112,7 +113,7 @@ function rollbar_admin_settings_form($form, &$form_state) {
     '#default_value' => variable_get('rollbar_watchdog_include_php', 0),
   );
 
-  // client settings for managing JavaScript events
+  // Client settings for managing JavaScript events.
   $form['js'] = array(
     '#type' => 'fieldset',
     '#title' => t('JavaScript'),
@@ -138,6 +139,20 @@ function rollbar_admin_settings_form($form, &$form_state) {
     ),
   );
 
+  // Filter settings.
+  $form['filters'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Filters'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  $form['filters']['rollbar_blacklist'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Blacklisted terms'),
+    '#description' => t('Line-separated list of blacklisted terms. Case insensitive.'),
+    '#default_value' => variable_get('rollbar_blacklist', ''),
+  );
+
   $form['#validate'][] = 'rollbar_admin_settings_form_validate';
   $form = system_settings_form($form);
   return $form;
@@ -149,7 +164,7 @@ function rollbar_admin_settings_form($form, &$form_state) {
  */
 function rollbar_admin_settings_form_validate($form, &$form_state) {
 
-  // only validate if PHP is enabled, we don't really care otherwise
+  // Only validate if PHP is enabled; we don't really care otherwise.
   if ($form_state['values']['rollbar_enable_php'] == 1) {
     if (!preg_match("/^[0-9a-z]{32}$/i", $form_state['values']['rollbar_server_access_token'])) {
       form_set_error(
@@ -158,17 +173,17 @@ function rollbar_admin_settings_form_validate($form, &$form_state) {
       );
     }
 
-    // rollbar library must exist
+    // Check that the Rollbar library exists.
     if (!file_exists($form_state['values']['rollbar_lib_path'])) {
       form_set_error('rollbar_lib_path', 'Couldn\'t find the Rollbar library
            in the specified path.');
     }
   }
 
-  // ensure key is provided for JS
+  // Ensure key is provided if JS is enabled.
   if ($form_state['values']['rollbar_enable_js'] == 1) {
 
-    // make sure it's alphanumeric
+    // Make sure the key is alphanumeric.
     if (!preg_match("/^[0-9a-z]{32}$/i", $form_state['values']['rollbar_js_access_token'])) {
       form_set_error(
         'rollbar_js_access_token',
