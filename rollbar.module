@@ -130,18 +130,22 @@ function rollbar_boot() {
     return;
   }
 
-  include_once $rollbar_lib_path;
-  Rollbar::init(
-    array(
-      'access_token' => $access_token,
-      'environment' => $environment,
-      'person' => array(
-        'id' => $GLOBALS['user']->uid,
-        'username' => $GLOBALS['user']->name,
-        'email' => $GLOBALS['user']->mail,
-      ),
-    ), $exceptions, $errors
+  $opts = array(
+    'access_token' => $access_token,
+    'environment'  => $environment,
   );
+
+  if (isset($GLOBALS['user']) && $GLOBALS['user']->uid > 0) {
+    $opts['person'] = array(
+      'id'       => $GLOBALS['user']->uid,
+      'username' => $GLOBALS['user']->name,
+      'email'    => $GLOBALS['user']->mail,
+    );
+  }
+
+  include_once $rollbar_lib_path;
+
+  Rollbar::init($opts, $exceptions, $errors);
 }
 
 
@@ -231,11 +235,15 @@ function rollbar_init() {
   }
 
   // Load client settings from Drupal variables.
-  $token  = check_plain(variable_get('rollbar_js_access_token', ''));
-  $env    = check_plain(variable_get('rollbar_environment', 'production'));
-  $p_id   = $GLOBALS['user']->uid;
-  $p_name = $GLOBALS['user']->name;
-  $p_mail = $GLOBALS['user']->mail;
+  $token = check_plain(variable_get('rollbar_js_access_token', ''));
+  $env   = check_plain(variable_get('rollbar_environment', 'production'));
+
+  if (isset($GLOBALS['user']) && $GLOBALS['user']->uid > 0) {
+    $p_id   = $GLOBALS['user']->uid;
+    $p_name = $GLOBALS['user']->name;
+    $p_mail = $GLOBALS['user']->mail;
+    $person = "_rollbarParams['person'] = {id: $p_id, username: '$p_name', email: '$p_mail'};";
+  }
 
   // I had some issues appending this via jQuery and using Drupal.behaviors,
   // so have opted to use plain Javascript in line with the Rollbar.com
@@ -244,7 +252,7 @@ function rollbar_init() {
   // Added rollbarParams['person'] to track the person data for JS, too.
   $js = "var _rollbarParams = {'server.environment': '$env'};" .
   "_rollbarParams['notifier.snippet_version'] = '2';" .
-  "_rollbarParams['person'] = {id: $p_id, username: '$p_name', email: '$p_mail'};" .
+  (isset($person) ? $person : '') .
   "var _rollbar=['$token', _rollbarParams];" .
   "var _ratchet=_rollbar;(function(w,d){w.onerror=function(e,u,l) {" .
   "_rollbar.push({_t:'uncaught',e:e,u:u,l:l});};var i=function(){" .
