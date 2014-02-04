@@ -204,18 +204,20 @@ function rollbar_watchdog($log_entry) {
     }
 
     // Prepend the log entry type onto the message.
-    $log_entry['message'] = ucwords($log_entry['type']) . ': ' . $log_entry['message'];
+    $log_entry['message'] = ucwords($log_entry['type']) . ': ' . strip_tags($log_entry['message']);
+
+    dsm($log_entry);
 
     // Send the message with some details from Watchdog.
     Rollbar::report_message(
       t($log_entry['message'], $log_entry['variables']),
       $level,
       array(
-        'type' => $log_entry['type'],
-        'uid' => $log_entry['uid'],
+        'type'        => $log_entry['type'],
+        'uid'         => $log_entry['uid'],
         'request_uri' => $log_entry['request_uri'],
-        'referer' => $log_entry['referer'],
-        'ip' => $log_entry['ip'],
+        'referer'     => $log_entry['referer'],
+        'ip'          => $log_entry['ip'],
       )
     );
   }
