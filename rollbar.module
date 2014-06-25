@@ -169,46 +169,63 @@ function rollbar_watchdog($log_entry) {
 
   // Map watchdog constants to strings for Rollbar.
   switch ($log_entry['severity']) {
-    case WATCHDOG_ALERT:
     case WATCHDOG_CRITICAL:
     case WATCHDOG_EMERGENCY:
+      $level = 'critical';
+      break;
+    case WATCHDOG_ALERT:
     case WATCHDOG_ERROR:
       $level = 'error';
       break;
     case WATCHDOG_WARNING:
+    case WATCHDOG_NOTICE:
       $level = 'warning';
       break;
     case WATCHDOG_INFO:
-    case WATCHDOG_DEBUG:
-    case WATCHDOG_NOTICE:
       $level = 'info';
+      break;
+    case WATCHDOG_DEBUG:
+      $level = 'debug';
       break;
     default:
       $level = 'info';
       break;
   }
 
+
   // Ensure that the Rollbar class exists; this is an additional check
   // in case hook_boot was unable to locate the Rollbar class.
   // This may happen if the user hasn't specified the correct path.
   if (class_exists('Rollbar')) {
 
+    $message = t($log_entry['message'], $log_entry['variables']);
+
+    // Prepend the log entry type onto the message.
+    $message = ucwords($log_entry['type']) . ': ' . strip_tags(html_entity_decode($message));
+
     // Return if the Watchdog message contains our blacklisted strings.
     $blacklist = explode("\n", variable_get('rollbar_blacklist', ''));
     if (!empty($blacklist)) {
       foreach ($blacklist as $item) {
-        if (stripos(trim($log_entry['message']), trim($item)) !== FALSE) {
+        if (stripos(trim($message), trim($item)) !== FALSE) {
           return;
         }
       }
     }
 
-    // Prepend the log entry type onto the message.
-    $log_entry['message'] = ucwords($log_entry['type']) . ': ' . strip_tags($log_entry['message']);
+    // Force debug for masquerade and session opend/closed.
+    if (preg_match("/^.*(masquerad|session\s(opened|closed)).*$/i", $message)) {
+      $level = 'debug';
+    }
+
+    // Force warning for any E_NOTICEs.
+    if (preg_match("/^.*(E_NOTICE).*$/i", $message)) {
+      $level = 'warning';
+    }
 
     // Send the message with some details from Watchdog.
     Rollbar::report_message(
-      t($log_entry['message'], $log_entry['variables']),
+      $message,
       $level,
       array(
         'type'        => $log_entry['type'],
